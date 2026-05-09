@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Corazón de Texto</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  const W = canvas.width = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
+
+  const chars = '01アイウエオカキクケコ♥❤LOVE';
+
+  function heartPoints(scale, cx, cy) {
+    const points = [];
+    for (let t = 0; t < Math.PI * 2; t += 0.04) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+      points.push([cx + x * scale, cy + y * scale]);
+    }
+    return points;
+  }
+
+  const scale = Math.min(W, H) / 38;
+  const cx = W / 2;
+  const cy = H / 2;
+
+  const particles = [];
+  const pts = heartPoints(scale, cx, cy);
+
+  for (let i = 0; i < 220; i++) {
+    const idx = Math.floor(Math.random() * pts.length);
+    const [bx, by] = pts[idx];
+    particles.push({
+      x: bx, y: by,
+      baseX: bx, baseY: by,
+      char: chars[Math.floor(Math.random() * chars.length)],
+      size: 10 + Math.random() * 8,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.015 + Math.random() * 0.025,
+      vx: 0, vy: 0,
+      exploded: false,
+    });
+  }
+
+  let frame = 0;
+  let exploding = false;
+  let explodeTimer = 0;
+
+  function explotar() {
+    exploding = true;
+    explodeTimer = 0;
+    for (const p of particles) {
+      p.vx = (Math.random() - 0.5) * 15;
+      p.vy = (Math.random() - 0.5) * 15;
+      p.exploded = true;
+    }
+    setTimeout(() => {
+      for (const p of particles) {
+        p.exploded = false;
+        p.vx = 0;
+        p.vy = 0;
+      }
+      exploding = false;
+    }, 1500);
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, W, H);
+
+    frame++;
+    explodeTimer++;
+
+    if (explodeTimer >= 180 && !exploding) {
+      explotar();
+    }
+
+    for (const p of particles) {
+      const t = frame * p.speed + p.phase;
+      const pulse = Math.sin(t);
+      const alpha = 0.5 + 0.5 * Math.abs(pulse);
+
+      if (p.exploded) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.25;
+      } else {
+        p.x += (p.baseX - p.x) * 0.05;
+        p.y += (p.baseY - p.y) * 0.05;
+      }
+
+      const r = Math.floor(200 + 55 * Math.abs(pulse));
+      const g = Math.floor(20 + 60 * (0.5 - 0.5 * Math.abs(pulse)));
+      const b = Math.floor(120 + 135 * Math.abs(pulse));
+
+      ctx.shadowBlur = 18 + 14 * Math.abs(pulse);
+      ctx.shadowColor = `rgba(${r},${g},${b},0.9)`;
+      ctx.globalAlpha = alpha * 0.92;
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.font = `bold ${p.size}px monospace`;
+      ctx.fillText(p.char, p.x, p.y);
+
+      if (Math.random() < 0.004) {
+        p.char = chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+</script>
+</body>
+</html>
