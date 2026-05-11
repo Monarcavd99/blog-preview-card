@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Snake</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box;}
+
+        body {
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: monospace;
+            color: white;
+        }
+
+        h1 {
+            font-size: 32px;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin-bottom: 10px;
+        }
+
+        #puntos {
+            font-size: 20px;
+            color: #ffffff;
+            margin-bottom: 15px;
+        }
+
+        canvas {
+            border: 2px solid #00ff88;
+            box-shadow: 0 0 20ps #00ff88;
+        }
+
+        #mensaje {
+            font-size: 22px;
+            color: #ff4444;
+            margin-top: 15px;
+            min-height: 30px;
+        }
+
+        #record {
+            font-size: 18px;
+            color: #ffcc00;
+            margin-top: 8px;
+            text-shadow: 0 0 8px #ffcc00;
+        }
+
+        #Reiniciar {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 18px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🐍 SNAKE</h1>
+  <div id="puntos">Puntos: 0</div>
+  <canvas id="c" width="400" height="400"></canvas>
+  <div id="mensaje"></div>
+  <div id="record">🏆 Récord: 0</div>
+  <button id="reiniciar">Jugar de nuevo</button>
+
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const puntosDiv = document.getElementById('puntos');
+  const mensajeDiv = document.getElementById('mensaje');
+  const botonReiniciar = document.getElementById('reiniciar');
+
+  const TAMA = 20;       // tamaño de cada celda
+  const COLS = 20;       // columnas
+  const FILAS = 20;      // filas
+
+  let serpiente, direccion, comida, puntos, jugando, intervalo;
+
+  let record = 0;
+  const recordDiv = document.getElementById('record');
+
+function sonidoComer() {
+  const ctx2 = new AudioContext();
+  const osc = ctx2.createOscillator();
+  const gain = ctx2.createGain();
+  osc.connect(gain);
+  gain.connect(ctx2.destination);
+  osc.frequency.value = 520;
+  gain.gain.setValueAtTime(0.3, ctx2.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.15);
+  osc.start();
+  osc.stop(ctx2.currentTime + 0.15);
+}
+
+function sonidoMuerte() {
+  const ctx2 = new AudioContext();
+  const osc = ctx2.createOscillator();
+  const gain = ctx2.createGain();
+  osc.connect(gain);
+  gain.connect(ctx2.destination);
+  osc.type = 'sawtooth';
+  osc.frequency.value = 150;
+  gain.gain.setValueAtTime(0.4, ctx2.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.4);
+  osc.start();
+  osc.stop(ctx2.currentTime + 0.4);
+}
+
+  function iniciar() {
+    serpiente = [
+      { x: 10, y: 10 },
+      { x: 9,  y: 10 },
+      { x: 8,  y: 10 },
+    ];
+    direccion = { x: 1, y: 0 };
+    puntos = 0;
+    jugando = true;
+    mensajeDiv.textContent = '';
+    botonReiniciar.style.display = 'none';
+    puntosDiv.textContent = 'Puntos: 0';
+    nuevaComida();
+    
+    clearInterval(intervalo);
+    intervalo = setInterval(actualizar, 150);
+  }
+
+  function nuevaComida() {
+    comida = {
+        x: Math.floor(Math.random() * COLS),
+        y: Math.floor(Math.random() * FILAS),
+    };
+  }
+
+  function actualizar() {
+    //Mover serpiente
+    const cabeza = {
+        x: serpiente[0].x + direccion.x,
+        y: serpiente[0].y + direccion.y,
+    };
+  
+
+  //Choke con paredes
+  if (cabeza.x < 0 || cabeza.x >= COLS || cabeza.y < 0 || cabeza.y >= FILAS) {
+    terminar();
+    return;
+  }
+
+  //choque consigo misma
+  for (const parte of serpiente) {
+    if (cabeza.x === parte.x && cabeza.y === parte.y) {
+        terminar();
+        return;
+    }
+  }
+
+  serpiente.unshift(cabeza);
+
+  //Comer comida
+  if (cabeza.x === comida.x && cabeza.y === comida.y) {
+  puntos += 10;
+  puntosDiv.textContent = 'Puntos: ' + puntos;
+  nuevaComida();
+  sonidoComer();
+
+  // Subir velocidad cada 50 puntos
+  if (puntos % 50 === 0) {
+    clearInterval(intervalo);
+    const velocidad = Math.max(60, 150 - puntos);
+    intervalo = setInterval(actualizar, velocidad);
+  }
+} else {
+  serpiente.pop();
+}
+  dibujar();
+}
+
+  function dibujar() {
+    //fondo
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Comida
+    ctx.fillStyle = '#ff4444';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#ff4444';
+    ctx.fillRect(comida.x * TAMA, comida.y * TAMA, TAMA - 2, TAMA - 2);
+
+    // Serpiente
+    for (let i = 0; i < serpiente.length; i++) {
+      if (i === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
+      } else {
+        ctx.fillStyle = '#00ff88';
+        ctx.shadowColor = '#00ff88';
+      }
+      ctx.shadowBlur = 10;
+      ctx.fillRect(
+        serpiente[i].x * TAMA,
+        serpiente[i].y * TAMA,
+        TAMA - 2,
+        TAMA - 2
+      );
+    }
+
+    ctx.shadowBlur = 0;
+  }
+
+ function terminar() {
+  jugando = false;
+  clearInterval(intervalo);
+  sonidoMuerte();
+
+  if (puntos > record) {
+    record = puntos;
+    recordDiv.textContent = '🏆 Récord: ' + record;
+  }
+
+  mensajeDiv.textContent = '💀 Game Over — Puntos: ' + puntos;
+  botonReiniciar.style.display = 'inline-block';
+
+  }
+
+  // Controles teclado
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp'    && direccion.y === 0) direccion = { x: 0, y: -1 };
+    if (e.key === 'ArrowDown'  && direccion.y === 0) direccion = { x: 0, y:  1 };
+    if (e.key === 'ArrowLeft'  && direccion.x === 0) direccion = { x: -1, y: 0 };
+    if (e.key === 'ArrowRight' && direccion.x === 0) direccion = { x:  1, y: 0 };
+  });
+
+  botonReiniciar.addEventListener('click', iniciar);
+
+  iniciar();
+</script>
+  
+</body>
+</html>
