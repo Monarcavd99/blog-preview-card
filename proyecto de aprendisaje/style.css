@@ -1,0 +1,112 @@
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0a0a0a;
+    color: #c9a8c9;
+    margin: 0;
+    overflow: hidden;
+}
+.page-shell {
+    width: min(1200px, calc(100% - 4rem));
+    margin: 0 auto;
+}
+.header {
+    margin-top: 0px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: #4CAF50;
+    padding: 5px 10px;
+}
+.header-logo-name h3 {
+    font-size: 20px;
+    color: #4CAF50;
+    letter-spacing: 4px;
+    font-weight: bold;
+}
+.hero-container {
+    display: flex;
+    flex-direction: column;
+    margin-top: 0;
+    background-image: url('./Zelda.jpg');
+    background-size: cover;
+    background-position: center;
+    padding: 40px 40px 120px 40px;
+    border-radius: 12px;
+    min-height: 100vh;
+    justify-content: center;
+}
+.nav {
+    display: flex;
+}
+nav a {
+    margin: 0 20px;
+    text-decoration: none;
+    color: #4CAF50;
+}
+#outline-btn {
+    border-radius: 5px;
+    background: transparent;
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+    padding: 0.7rem 1rem;
+    font-size: 12px;
+    margin: 0 8px;
+}
+#filled-btn {
+    border-radius: 5px;
+    background: #00FF;
+    color: #0a0a0a;
+    border: none;
+    padding: 0.7rem 1rem;
+    font-size: 12px;
+}
+.hero-title h1 {
+    font-size: clamp(1.2rem, 5vw,2rem);
+    line-height: 0.95;
+    margin: 0;
+    color: white;
+}
+.hero-badge {
+    color: white;
+}
+footer.atribution {
+    position: fixed;
+    bottom: 10px;
+    left: 20px;
+    font-size: 12px;
+    color: #00FF
+}
+footer.atribution {
+    color:#00FF41;
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    .nav {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    nav a {
+        margin: 0 8px;
+        font-size: 14px;
+    }
+    .header-btn {
+        display: flex;
+        gap: 8px;
+    }
+    .hero-title h1 {
+        font-size: clamp(1.5rem, 6vw, 2.5rem);
+    }
+    .hero-container {
+        padding: 20px;
+        justify-content: flex-start;
+    }
+}

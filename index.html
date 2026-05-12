@@ -1,133 +1,274 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Corazón de Texto</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
-    }
-    canvas { display: block; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Snake</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box;}
+
+        body {
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: monospace;
+            color: white;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin-bottom: 10px;
+        }
+
+        #puntos {
+            font-size: 28px;
+            color: #ffffff;
+            margin-bottom: 15px;
+        }
+
+        canvas {
+            border: 2px solid #00ff88;
+            box-shadow: 0 0 20ps #00ff88;
+            width: min(90vw);
+            height: min(90vw);
+        }
+
+        #mensaje {
+            font-size: 22px;
+            color: #ff4444;
+            margin-top: 15px;
+            min-height: 30px;
+        }
+
+        #record {
+            font-size: 18px;
+            color: #ffcc00;
+            margin-top: 8px;
+            text-shadow: 0 0 8px #ffcc00;
+        }
+
+        #Reiniciar {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 18px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+
+    <h1>🐍 SNAKE</h1>
+  <div id="puntos">Puntos: 0</div>
+  <canvas id="c" width="400" height="400"></canvas>
+  <div id="mensaje"></div>
+  <div id="record">🏆 Récord: 0</div>
+  <button id="reiniciar">Jugar de nuevo</button>
+
 <script>
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
+  const puntosDiv = document.getElementById('puntos');
+  const mensajeDiv = document.getElementById('mensaje');
+  const botonReiniciar = document.getElementById('reiniciar');
 
-  const W = canvas.width = window.innerWidth;
-  const H = canvas.height = window.innerHeight;
+  const TAMA = 20;       // tamaño de cada celda
+  const COLS = 20;       // columnas
+  const FILAS = 20;      // filas
 
-  const chars = '01アイウエオカキクケコ♥❤LOVE';
+  let serpiente, direccion, comida, puntos, jugando, intervalo;
 
-  function heartPoints(scale, cx, cy) {
-    const points = [];
-    for (let t = 0; t < Math.PI * 2; t += 0.04) {
-      const x = 16 * Math.pow(Math.sin(t), 3);
-      const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-      points.push([cx + x * scale, cy + y * scale]);
-    }
-    return points;
+  let record = localStorage.getItem('record') || 0;
+  const recordDiv = document.getElementById('record');
+
+function sonidoComer() {
+  const ctx2 = new AudioContext();
+  const osc = ctx2.createOscillator();
+  const gain = ctx2.createGain();
+  osc.connect(gain);
+  gain.connect(ctx2.destination);
+  osc.frequency.value = 520;
+  gain.gain.setValueAtTime(0.3, ctx2.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.15);
+  osc.start();
+  osc.stop(ctx2.currentTime + 0.15);
+}
+
+function sonidoMuerte() {
+  const ctx2 = new AudioContext();
+  const osc = ctx2.createOscillator();
+  const gain = ctx2.createGain();
+  osc.connect(gain);
+  gain.connect(ctx2.destination);
+  osc.type = 'sawtooth';
+  osc.frequency.value = 150;
+  gain.gain.setValueAtTime(0.4, ctx2.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.4);
+  osc.start();
+  osc.stop(ctx2.currentTime + 0.4);
+}
+
+  function iniciar() {
+    serpiente = [
+      { x: 10, y: 10 },
+      { x: 9,  y: 10 },
+      { x: 8,  y: 10 },
+    ];
+    direccion = { x: 1, y: 0 };
+    puntos = 0;
+    jugando = true;
+    mensajeDiv.textContent = '';
+    botonReiniciar.style.display = 'none';
+    puntosDiv.textContent = 'Puntos: 0';
+    nuevaComida();
+    
+    clearInterval(intervalo);
+    intervalo = setInterval(actualizar, 150);
   }
 
-  const scale = Math.min(W, H) / 38;
-  const cx = W / 2;
-  const cy = H / 2;
-
-  const particles = [];
-  const pts = heartPoints(scale, cx, cy);
-
-  for (let i = 0; i < 220; i++) {
-    const idx = Math.floor(Math.random() * pts.length);
-    const [bx, by] = pts[idx];
-    particles.push({
-      x: bx, y: by,
-      baseX: bx, baseY: by,
-      char: chars[Math.floor(Math.random() * chars.length)],
-      size: 10 + Math.random() * 8,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.015 + Math.random() * 0.025,
-      vx: 0, vy: 0,
-      exploded: false,
-    });
+  function nuevaComida() {
+    comida = {
+        x: Math.floor(Math.random() * COLS),
+        y: Math.floor(Math.random() * FILAS),
+    };
   }
 
-  let frame = 0;
-  let exploding = false;
-  let explodeTimer = 0;
+  function actualizar() {
+    //Mover serpiente
+    const cabeza = {
+        x: serpiente[0].x + direccion.x,
+        y: serpiente[0].y + direccion.y,
+    };
+  
 
-  function explotar() {
-    exploding = true;
-    explodeTimer = 0;
-    for (const p of particles) {
-      p.vx = (Math.random() - 0.5) * 15;
-      p.vy = (Math.random() - 0.5) * 15;
-      p.exploded = true;
-    }
-    setTimeout(() => {
-      for (const p of particles) {
-        p.exploded = false;
-        p.vx = 0;
-        p.vy = 0;
-      }
-      exploding = false;
-    }, 1500);
+  //Choke con paredes
+  if (cabeza.x < 0 || cabeza.x >= COLS || cabeza.y < 0 || cabeza.y >= FILAS) {
+    terminar();
+    return;
   }
 
-  function draw() {
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, 0, W, H);
-
-    frame++;
-    explodeTimer++;
-
-    if (explodeTimer >= 180 && !exploding) {
-      explotar();
+  //choque consigo misma
+  for (const parte of serpiente) {
+    if (cabeza.x === parte.x && cabeza.y === parte.y) {
+        terminar();
+        return;
     }
+  }
 
-    for (const p of particles) {
-      const t = frame * p.speed + p.phase;
-      const pulse = Math.sin(t);
-      const alpha = 0.5 + 0.5 * Math.abs(pulse);
+  serpiente.unshift(cabeza);
 
-      if (p.exploded) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.25;
+  //Comer comida
+  if (cabeza.x === comida.x && cabeza.y === comida.y) {
+  puntos += 10;
+  puntosDiv.textContent = 'Puntos: ' + puntos;
+  nuevaComida();
+  sonidoComer();
+
+  // Subir velocidad cada 50 puntos
+  if (puntos % 50 === 0) {
+    clearInterval(intervalo);
+    const velocidad = Math.max(60, 150 - puntos);
+    intervalo = setInterval(actualizar, velocidad);
+  }
+} else {
+  serpiente.pop();
+}
+  dibujar();
+}
+
+  function dibujar() {
+    //fondo
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Comida
+    ctx.fillStyle = '#ff4444';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#ff4444';
+    ctx.fillRect(comida.x * TAMA, comida.y * TAMA, TAMA - 2, TAMA - 2);
+
+    // Serpiente
+    for (let i = 0; i < serpiente.length; i++) {
+      if (i === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
       } else {
-        p.x += (p.baseX - p.x) * 0.05;
-        p.y += (p.baseY - p.y) * 0.05;
+        ctx.fillStyle = '#00ff88';
+        ctx.shadowColor = '#00ff88';
       }
-
-      const r = Math.floor(200 + 55 * Math.abs(pulse));
-      const g = Math.floor(20 + 60 * (0.5 - 0.5 * Math.abs(pulse)));
-      const b = Math.floor(120 + 135 * Math.abs(pulse));
-
-      ctx.shadowBlur = 18 + 14 * Math.abs(pulse);
-      ctx.shadowColor = `rgba(${r},${g},${b},0.9)`;
-      ctx.globalAlpha = alpha * 0.92;
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.font = `bold ${p.size}px monospace`;
-      ctx.fillText(p.char, p.x, p.y);
-
-      if (Math.random() < 0.004) {
-        p.char = chars[Math.floor(Math.random() * chars.length)];
-      }
+      ctx.shadowBlur = 10;
+      ctx.fillRect(
+        serpiente[i].x * TAMA,
+        serpiente[i].y * TAMA,
+        TAMA - 2,
+        TAMA - 2
+      );
     }
 
-    ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
-    requestAnimationFrame(draw);
   }
 
-  draw();
+ function terminar() {
+  jugando = false;
+  clearInterval(intervalo);
+  sonidoMuerte();
+
+  if (puntos > record) {
+    record = puntos;
+    localStorage.setItem('record', record);
+    recordDiv.textContent = '🏆 Récord: ' + record;
+  }
+
+  mensajeDiv.textContent = '💀 Game Over — Puntos: ' + puntos;
+  botonReiniciar.style.display = 'inline-block';
+
+  }
+
+  // Controles teclado
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp'    && direccion.y === 0) direccion = { x: 0, y: -1 };
+    if (e.key === 'ArrowDown'  && direccion.y === 0) direccion = { x: 0, y:  1 };
+    if (e.key === 'ArrowLeft'  && direccion.x === 0) direccion = { x: -1, y: 0 };
+    if (e.key === 'ArrowRight' && direccion.x === 0) direccion = { x:  1, y: 0 };
+  });
+
+  botonReiniciar.addEventListener('click', iniciar);
+
+  iniciar();
+  // Controles táctiles (swipe)
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Swipe horizontal
+        if (dx > 30 && direccion.x === 0) direccion = { x: 1, y: 0 };
+        if (dx < -30 && direccion.x === 0) direccion = { x: -1, y: 0 };
+    } else {
+        // Swipe vertical
+        if (dy > 30 && direccion.y === 0) direccion = { x: 0, y: 1 };
+        if (dy < -30 && direccion.y === 0) direccion = { x: 0, y: -1 };
+    }
+    }, { passive: false });
 </script>
+  
 </body>
 </html>

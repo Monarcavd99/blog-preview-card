@@ -18,14 +18,14 @@
         }
 
         h1 {
-            font-size: 32px;
+            font-size: 36px;
             color: #00ff88;
             text-shadow: 0 0 10px #00ff88;
             margin-bottom: 10px;
         }
 
         #puntos {
-            font-size: 20px;
+            font-size: 28px;
             color: #ffffff;
             margin-bottom: 15px;
         }
@@ -33,6 +33,8 @@
         canvas {
             border: 2px solid #00ff88;
             box-shadow: 0 0 20ps #00ff88;
+            width: min(90vw);
+            height: min(90vw);
         }
 
         #mensaje {
@@ -84,7 +86,7 @@
 
   let serpiente, direccion, comida, puntos, jugando, intervalo;
 
-  let record = 0;
+  let record = localStorage.getItem('record') || 0;
   const recordDiv = document.getElementById('record');
 
 function sonidoComer() {
@@ -221,6 +223,7 @@ function sonidoMuerte() {
 
   if (puntos > record) {
     record = puntos;
+    localStorage.setItem('record', record);
     recordDiv.textContent = '🏆 Récord: ' + record;
   }
 
@@ -240,6 +243,31 @@ function sonidoMuerte() {
   botonReiniciar.addEventListener('click', iniciar);
 
   iniciar();
+  // Controles táctiles (swipe)
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Swipe horizontal
+        if (dx > 30 && direccion.x === 0) direccion = { x: 1, y: 0 };
+        if (dx < -30 && direccion.x === 0) direccion = { x: -1, y: 0 };
+    } else {
+        // Swipe vertical
+        if (dy > 30 && direccion.y === 0) direccion = { x: 0, y: 1 };
+        if (dy < -30 && direccion.y === 0) direccion = { x: 0, y: -1 };
+    }
+    }, { passive: false });
 </script>
   
 </body>
